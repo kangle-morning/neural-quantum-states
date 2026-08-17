@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>神经网络量子态 · Neural Quantum States 交互式讲解</title>
+<meta name="description" content="用人工神经网络表示量子多体波函数的交互式讲解：原理、变分蒙特卡洛方法、现场训练演示与近期进展。">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+
+<!-- ===================== NAV ===================== -->
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#top">Ψ·NQS<span>神经网络量子态</span></a>
+    <nav class="links">
+      <a href="#why">为什么 NQS</a>
+      <a href="#idea">核心思想</a>
+      <a href="#vmc">变分蒙特卡洛</a>
+      <a href="#lab">现场训练</a>
+      <a href="#arch">架构演进</a>
+      <a href="#recent">近期进展</a>
+      <a href="#refs">参考</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ===================== HERO ===================== -->
+<section id="top" class="hero">
+  <div class="hero-inner container">
+    <p class="eyebrow">交互式科普 · 边看边动手</p>
+    <h1>神经网络量子态</h1>
+    <p class="en-title">Neural Quantum States</p>
+    <p class="lede">量子多体系统的一个波函数，需要 <b>2<sup>N</sup></b> 个复系数才能写下来——当 N 稍大，这个数字就超过全宇宙的原子数。神经网络量子态（NQS）用一句简单的话破解这个难题：<b>让神经网络学会“压缩”这个波函数</b>。</p>
+    <div class="hero-cta">
+      <a href="#lab" class="btn primary">▶ 亲手训练一个 NQS</a>
+      <a href="#why" class="btn ghost">从头理解原理</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hstat"><b>2<sup>N</sup></b><span>N 个自旋波函数的系数个数</span></div>
+      <div class="hstat"><b>ψ(x)=f<sub>θ</sub>(x)</b><span>神经网络充当变分波函数</span></div>
+      <div class="hstat"><b>VMC</b><span>变分蒙特卡洛优化</span></div>
+    </div>
+  </div>
+  <div class="scroll-hint">向下滚动探索 ↓</div>
+</section>
+
+<!-- ===================== SECTION 1 : WHY ===================== -->
+<section id="why" class="section">
+  <div class="container">
+    <div class="section-head">
+      <p class="kicker">第 1 步 · 问题</p>
+      <h2>为什么需要神经网络量子态？</h2>
+      <p class="lead">描述 N 个自旋（量子比特）的量子态，需要在每个基态 <code>|↑↓↑⋯⟩</code> 上放一个复数振幅。基态总数是 <b>2<sup>N</sup></b>——这就是著名的<b>“指数墙”</b>。</p>
+    </div>
+
+    <div class="grid two">
+      <div class="panel">
+        <div class="ctrl-row">
+          <label for="hilbertN">自旋个数 <b>N</b> = <span id="hilbertNval">30</span></label>
+          <input type="range" id="hilbertN" min="1" max="300" value="30" step="1">
+        </div>
+        <div class="big-number">
+          <span id="hilbertValue">1,073,741,824</span>
+          <small>个复数系数（= 2<sup>N</sup>）</small>
+        </div>
+        <div class="mem-note">
+          若每个系数存成 16 字节（complex128），需要
+          <b id="hilbertMem">17.2 GB</b>
+        </div>
+        <canvas id="hilbertCanvas" height="180"></canvas>
+        <p class="hint">对数刻度：蓝色条是当前 2<sup>N</sup>，灰色条是几个熟悉的参照尺度。注意它是如何在上面飞快滑过“宇宙原子数”的。</p>
+      </div>
+      <div class="panel">
+        <h3>为什么“写不下”是致命的</h3>
+        <p>量子力学的力量正来自这个指数大的空间：N 个量子比特能同时编码 2<sup>N</sup> 种经典状态。但代价是，直接“存下”一个量子态需要同样指数多的内存。</p>
+        <ul class="ticks">
+          <li><b>N=30</b> 个自旋 ≈ 10<sup>9</sup> 个系数 ≈ <b>17 GB</b>——勉强能存下。</li>
+          <li><b>N=50</b> ≈ 10<sup>15</sup> 个系数 ≈ <b>1.8 PB</b>——一台超算的存储。</li>
+          <li><b>N=100</b> ≈ 10<sup>30</sup>，已不可存储。</li>
+          <li><b>N=300</b> ≈ 2×10<sup>90</sup>，<b>超过可观测宇宙的原子总数（~10<sup>80</sup>）</b>。</li>
+        </ul>
+        <p>而真实的材料、分子、量子器件动辄成千上万自由度。所以问题不是“算得更快”，而是<b>换一种表示方式</b>。</p>
+        <div class="callout">
+          <b>核心直觉：</b>物理上“感兴趣的”量子态（如基态、低能态）通常只占据指数大空间里一个非常“苗条”的角落。如果我们能用一个<b>参数很少的函数</b>（比如神经网络）去逼近它，就绕开了指数墙。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 2 : IDEA ===================== -->
+<section id="idea" class="section alt">
+  <div class="container">
+    <div class="section-head">
+      <p class="kicker">第 2 步 · 思想</p>
+      <h2>核心思想：波函数就是一个神经网络</h2>
+      <p class="lead">把波函数写成带参数 θ 的神经网络：<b>ψ<sub>θ</sub>(x)</b>。输入是一个自旋构型 x，输出是该构型的<b>振幅（和相位）</b>。2017 年 Carleo &amp; Troyer 用最朴素的结构——受限玻尔兹曼机（RBM）——第一次做到了这件事。</p>
+    </div>
+
+    <div class="grid idea-grid">
+      <div class="panel">
+        <div class="ctrl-row two-ctrl">
+          <div>
+            <label for="rbmN">可见层（自旋）N = <span id="rbmNval">6</span></label>
+            <input type="range" id="rbmN" min="2" max="12" value="6" step="1">
+          </div>
+          <div>
+            <label for="rbmM">隐藏层 M = <span id="rbmMval">4</span></label>
+            <input type="range" id="rbmM" min="2" max="12" value="4" step="1">
+          </div>
+        </div>
+        <canvas id="rbmCanvas" height="320"></canvas>
+        <p class="hint">把鼠标移到任意一个神经元上，看它连出的所有权重。蓝=正权重，橙=负权重，粗细=权重绝对值。参数总数 = <b id="rbmParams">34</b> 个。</p>
+      </div>
+      <div class="panel">
+        <h3>一个具体的公式</h3>
+        <div class="formula">
+          ψ<sub>θ</sub>(s) = e<sup>Σ<sub>i</sub> a<sub>i</sub> s<sub>i</sub></sup> · ∏<sub>j</sub> 2 cosh( b<sub>j</sub> + Σ<sub>i</sub> W<sub>ij</sub> s<sub>i</sub> )
+        </div>
+        <p>其中 s = (s<sub>1</sub>, …, s<sub>N</sub>) 是可见层自旋（±1），h<sub>j</sub> 是 M 个隐藏单元。可调参数 θ = {a, b, W} 只有 <b>N + M + N·M</b> 个——相比 2<sup>N</sup> 是指数级压缩。</p>
+        <ul class="ticks">
+          <li><b>可见层</b>：对应物理自由度（自旋构型）。</li>
+          <li><b>隐藏层</b>：捕捉构型之间的“关联”。隐藏单元越多，能描述的纠缠结构越丰富。</li>
+          <li><b>振幅 + 相位</b>：一般量子态是复数的。对横场 Ising 这类“可斯托克化”模型，基态振幅非负，用实参数即可；更一般的情形要让输出为复数。</li>
+        </ul>
+        <div class="callout">
+          <b>为什么神经网络“够用”？</b>神经网络是通用函数逼近器，且擅长表达<b>物理上有结构的函数</b>（平移对称、局域关联、乘积态与纠缠态）。这正是把“指数墙”换成一个可优化的参数空间。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 3 : VMC ===================== -->
+<section id="vmc" class="section">
+  <div class="container">
+    <div class="section-head">
+      <p class="kicker">第 3 步 · 方法</p>
+      <h2>如何“训练”它？—— 变分蒙特卡洛</h2>
+      <p class="lead">我们没有“标准答案”波函数可抄，手里只有哈密顿量 H。变分原理告诉我们：任何试探波函数 ψ<sub>θ</sub> 的能量都不低于真实基态能量 E<sub>0</sub>。于是训练目标就是<b>把能量往下压</b>。</p>
+    </div>
+
+    <div class="grid two">
+      <div class="panel">
+        <h3>两步：采样 → 求梯度</h3>
+        <div class="formula small">
+          E<sub>θ</sub> = ⟨ψ<sub>θ</sub>|H|ψ<sub>θ</sub>⟩ / ⟨ψ<sub>θ</sub>|ψ<sub>θ</sub>⟩ = Σ<sub>s</sub> p(s) · E<sub>loc</sub>(s)
+        </div>
+        <p>其中 <b>p(s) ∝ |ψ(s)|²</b> 是“某个构型出现的概率”，而 <b>局域能量</b></p>
+        <div class="formula small">
+          E<sub>loc</sub>(s) = ⟨s|H|ψ⟩ / ψ(s)
+        </div>
+        <ul class="ticks">
+          <li><b>① 采样：</b>用马尔可夫链蒙特卡洛（Metropolis）按 p(s) 抽取构型。2<sup>N</sup> 太大没法枚举，但“按概率采样”是可行的。</li>
+          <li><b>② 梯度：</b>能量关于参数的梯度恰好是 E<sub>loc</sub> 与对数导数 O<sub>k</sub> = ∂lnψ/∂θ<sub>k</sub> 的<b>协方差</b>，可无偏估计。</li>
+          <li><b>③ 下降：</b>用随机梯度下降 / Adam 更新参数，能量单调下降，直到逼近 E<sub>0</sub>。</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>先看看采样长什么样</h3>
+        <canvas id="mcmcCanvas" height="260"></canvas>
+        <div class="btn-row">
+          <button id="mcmcRun" class="btn primary small">▶ 开始采样</button>
+          <button id="mcmcReset" class="btn ghost small">重置</button>
+          <span class="mcmc-stat">接受率 <b id="mcmcRate">—</b></span>
+        </div>
+        <p class="hint">白点是一个 Metropolis 行走者，它按目标分布 p(x)（两个山峰）随机跳转：跳到“概率更高”的地方几乎总被接受，跳到“概率低”的地方偶尔被拒绝。下面逐渐堆积的柱状图就是它采样出的分布——这正是 VMC 里“按 |ψ|² 采样”的原理。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 4 : LIVE LAB ===================== -->
+<section id="lab" class="section alt">
+  <div class="container">
+    <div class="section-head">
+      <p class="kicker">第 4 步 · 动手</p>
+      <h2>现场实验：在你的浏览器里训练一个 NQS</h2>
+      <p class="lead">下面的代码是<b>真的在训练</b>——一个 RBM 波函数，用变分蒙特卡洛逼近横场 Ising 链 H = −J Σ Z<sub>i</sub>Z<sub>i+1</sub> − g Σ X<sub>i</sub> 的基态。横线是<b>精确对角化</b>给出的真实基态能量，看看神经网络能多快追上去。</p>
+    </div>
+
+    <div class="panel lab-controls">
+      <div class="ctrl-grid">
+        <div class="ctrl">
+          <label for="labN">系统尺寸 N</label>
+          <select id="labN">
+            <option value="4">4</option>
+            <option value="6" selected>6</option>
+            <option value="8">8</option>
+            <option value="10">10</option>
+          </select>
+        </div>
+        <div class="ctrl">
+          <label for="labG">横场强度 g = <span id="labGval">1.0</span></label>
+          <input type="range" id="labG" min="0.5" max="2.0" value="1.0" step="0.05">
+        </div>
+        <div class="ctrl">
+          <label for="labM">隐藏单元 M = <span id="labMval">12</span></label>
+          <input type="range" id="labM" min="4" max="24" value="12" step="2">
+        </div>
+        <div class="ctrl">
+          <label for="labLR">学习率 = <span id="labLRval">0.05</span></label>
+          <input type="range" id="labLR" min="0.01" max="0.1" value="0.05" step="0.005">
+        </div>
+        <div class="ctrl">
+          <label for="labSPF">每帧步数 = <span id="labSPFval">3</span></label>
+          <input type="range" id="labSPF" min="1" max="20" value="3" step="1">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button id="labRun" class="btn primary">▶ 开始训练</button>
+        <button id="labReset" class="btn ghost">重置</button>
+        <div class="lab-readouts">
+          <span>步数 <b id="labStep">0</b></span>
+          <span>变分能量 <b id="labEnergy">—</b></span>
+          <span>精确基态 <b id="labE0">—</b></span>
+          <span>保真度 <b id="labFidelity">—</b></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid lab-charts">
+      <div class="panel">
+        <h3>能量 vs 训练步数</h3>
+        <canvas id="labEnergyCanvas" height="220"></canvas>
+        <p class="hint">蓝线是 VMC 每次估计的能量（有采样噪声），虚线是精确基态能量。看到能量“抖动着下降”就是随机优化在起作用。</p>
+      </div>
+      <div class="panel">
+        <h3>保真度 F = |⟨ψ<sub>NQS</sub>|ψ<sub>exact</sub>⟩|²</h3>
+        <canvas id="labFidelityCanvas" height="220"></canvas>
+        <p class="hint">F 越接近 1，说明神经网络学到的量子态越“像”真实基态。几秒内通常就能冲到 99% 以上。</p>
+      </div>
+    </div>
+    <div class="panel lab-hist">
+      <h3>波函数振幅 |ψ|² —— 神经网络 vs 精确（对每个基态构型）</h3>
+      <canvas id="labHistCanvas" height="200"></canvas>
+      <p class="hint">横轴是按字典序排列的 2<sup>N</sup> 个自旋构型，青色是 NQS 学到的 |ψ|²，紫色是精确基态。两者重合得越好，说明压缩表示越成功。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 5 : ARCH ===================== -->
+<section id="arch" class="section">
+  <div class="container">
+    <div class="section-head">
+      <p class="kicker">第 5 步 · 演进</p>
+      <h2>架构的演进：从 RBM 到 Transformer</h2>
+      <p class="lead">一个 ansatz 好不好，看三点：<b>表达力</b>（能否描述纠缠）、<b>采样速度</b>（能否快速产生样本）、<b>可优化性</b>（梯度是否好算）。沿着这三条线索，架构不断升级。</p>
+    </div>
+
+    <div class="timeline" id="timeline">
+      <button class="tl-item active" data-id="rbm"><span class="tl-year">2017</span><span class="tl-name">RBM</span></button>
+      <button class="tl-item" data-id="deep"><span class="tl-year">2018–19</span><span class="tl-name">深度前馈 / CNN</span></button>
+      <button class="tl-item" data-id="ar"><span class="tl-year">2018–20</span><span class="tl-name">自回归 RNN / MADE</span></button>
+      <button class="tl-item" data-id="fermion"><span class="tl-year">2019–20</span><span class="tl-name">费米子 / 分子</span></button>
+      <button class="tl-item" data-id="transformer"><span class="tl-year">2021+</span><span class="tl-name">Transformer</span></button>
+      <button class="tl-item" data-id="diffusion"><span class="tl-year">2023+</span><span class="tl-name">扩散 / 生成模型</span></button>
+    </div>
+
+    <div class="tl-panel panel" id="tlPanel">
+      <div class="tl-icon" id="tlIcon"></div>
+      <h3 id="tlTitle">受限玻尔兹曼机（RBM）</h3>
+      <p id="tlText">RBM 是最简单、最经典的 NQS 结构……</p>
+      <ul class="ticks" id="tlPros"></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 6 : RECENT ===================== -->
+<section id="recent" class="section alt">
+  <div class="container">
+    <div class="section-head">
+      <p class="kicker">第 6 步 · 前沿</p>
+      <h2>近期发展（2023–2025）</h2>
+      <p class="lead">NQS 正在从“玩具模型演示”走向“真正解决硬问题”：量子化学精度、二维阻挫磁体、多体动力学、组合优化。下面是几条活跃的方向。</p>
+    </div>
+
+    <div class="grid cards">
+      <article class="card">
+        <span class="card-tag">机器学习精度</span>
+        <h3>Transformer 神经量子态</h3>
+        <p>自回归 Transformer 表达力强、采样精确，已能把二维晶格的基态能量优化到“机器精度”，逼近甚至超过传统方法。</p>
+        <a href="https://arxiv.org/abs/2302.01941" target="_blank" rel="noopener">Chen &amp; Heyl 2023 →</a>
+      </article>
+      <article class="card">
+        <span class="card-tag">量子化学</span>
+        <h3>费米子 NQS：FermiNet / PauliNet</h3>
+        <p>用神经网络修正 Slater 行列式（backflow），在电子薛定谔方程上达到化学精度，是 NQS 最亮眼的“落地”成果之一。</p>
+        <a href="https://arxiv.org/abs/1909.02487" target="_blank" rel="noopener">FermiNet →</a>
+        <a href="https://arxiv.org/abs/1909.08423" target="_blank" rel="noopener">PauliNet →</a>
+      </article>
+      <article class="card">
+        <span class="card-tag">生成式模型</span>
+        <h3>扩散模型量子态</h3>
+        <p>把去噪扩散模型用于生成量子态，摆脱自回归“逐格生成”的顺序瓶颈，开辟生成式 NQS 的新路子。</p>
+        <a href="https://arxiv.org/abs/2311.15444" target="_blank" rel="noopener">Quantum Diffusion Models →</a>
+      </article>
+      <article class="card">
+        <span class="card-tag">组合优化</span>
+        <h3>神经网络退火</h3>
+        <p>把“模拟退火/量子退火”的降温过程搬进 NQS 参数空间（变分神经退火），在 Ising 组合优化问题中与专用退火机一较高下。</p>
+        <a href="https://arxiv.org/abs/2101.10154" target="_blank" rel="noopener">Hibat-Allah et al. 2022 →</a>
+      </article>
+      <article class="card">
+        <span class="card-tag">对称性 / 阻挫磁体</span>
+        <h3>等变与平移对称网络</h3>
+        <p>把平移、点群、SU(2) 等物理对称性硬编码进网络结构，显著提升泛化，是处理二维阻挫磁体的关键设计原则。</p>
+        <a href="https://www.semanticscholar.org/paper/Design-principles-of-deep-translationally-symmetric-Nutakki-Shokry/ef8d2c067933bffa41e1edd147e058d9dcf807aa" target="_blank" rel="noopener">Design principles 综述 →</a>
+      </article>
+      <article class="card">
+        <span class="card-tag">动力学</span>
+        <h3>含时 NQS 与多体动力学</h3>
+        <p>用显含时间的神经网络量子态做 t-VMC，模拟量子猝灭、输运与动力学演化，把 NQS 从“静态基态”推进到“动态演化”。</p>
+        <a href="https://arxiv.org/abs/2412.11830" target="_blank" rel="noopener">arXiv:2412.11830 →</a>
+      </article>
+      <article class="card">
+        <span class="card-tag">通用 ansatz</span>
+        <h3>基础模型式 NQS</h3>
+        <p>训练一个“基础 NQS”作为统一 ansatz，同时适配多个哈密顿量，让量子多体计算也走上“预训练 + 微调”的路线。</p>
+        <a href="https://www.nature.com/articles/s41467-025-62098-x" target="_blank" rel="noopener">Nature Communications 2025 →</a>
+      </article>
+      <article class="card">
+        <span class="card-tag">基础模型 · 相变</span>
+        <h3>基础模型神经有效哈密顿量（FNEH）</h3>
+        <p>把基础模型 NQS 采样出的波函数当作基底，投影成可复用的“有效哈密顿量”：修正相边界误判，且跨参数扫描几乎零额外采样成本。</p>
+        <a href="https://arxiv.org/abs/2608.14208" target="_blank" rel="noopener">Zhang, Jiang &amp; Luo 2026 →</a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SECTION 7 : REFS ===================== -->
+<section id="refs" class="section">
+  <div class="container">
+    <div class="section-head">
+      <p class="kicker">延伸阅读</p>
+      <h2>关键论文与工具</h2>
+    </div>
+    <div class="refs">
+      <a class="ref" href="https://arxiv.org/abs/1606.02318" target="_blank" rel="noopener">
+        <b>Carleo &amp; Troyer (2017)</b> — Solving the quantum many-body problem with artificial neural networks. <i>Science</i> 355, 602.
+      </a>
+      <a class="ref" href="https://www.nature.com/articles/s41567-019-0545-3" target="_blank" rel="noopener">
+        <b>Melko, Carleo, Carrasquilla, Cirac (2019)</b> — Restricted Boltzmann machines in quantum physics. <i>Nature Physics</i> 15, 887.
+      </a>
+      <a class="ref" href="https://arxiv.org/abs/1701.04844" target="_blank" rel="noopener">
+        <b>Deng, Li, Das Sarma (2017)</b> — Quantum entanglement in neural network states. <i>PRX</i> 7, 021021.
+      </a>
+      <a class="ref" href="https://arxiv.org/abs/1902.04057" target="_blank" rel="noopener">
+        <b>Sharir et al. (2020)</b> — Deep autoregressive models for efficient variational simulation. <i>PRL</i> 124, 020503.
+      </a>
+      <a class="ref" href="https://arxiv.org/abs/2002.02973" target="_blank" rel="noopener">
+        <b>Hibat-Allah, Ganahl et al. (2020)</b> — Recurrent neural network wave functions. <i>PRR</i> 2, 023358.
+      </a>
+      <a class="ref" href="https://arxiv.org/abs/1909.02487" target="_blank" rel="noopener">
+        <b>Pfau, Spencer, Matthews, Foulkes (2020)</b> — Ab initio solution of the many-electron Schrödinger equation with deep neural networks (FermiNet). <i>PRR</i> 2, 033429.
+      </a>
+      <a class="ref" href="https://arxiv.org/abs/1909.08423" target="_blank" rel="noopener">
+        <b>Hermann, Schätzle, Noé (2020)</b> — Deep-neural-network solution of the electronic Schrödinger equation (PauliNet). <i>Nat. Chem.</i> 12, 891.
+      </a>
+      <a class="ref" href="https://arxiv.org/abs/1807.10770" target="_blank" rel="noopener">
+        <b>Luo &amp; Clark (2019)</b> — Backflow transformations via neural networks. <i>PRL</i> 122, 226401.
+      </a>
+      <a class="ref" href="https://arxiv.org/abs/2112.10526" target="_blank" rel="noopener">
+        <b>Vicentini et al. (2022)</b> — NetKet 3: machine learning toolbox for many-body quantum systems.
+      </a>
+      <a class="ref" href="https://arxiv.org/abs/2402.09402" target="_blank" rel="noopener">
+        <b>Neural Quantum States: Architectures and Applications</b> — 一篇较新的领域综述（2024）。
+      </a>
+      <a class="ref" href="https://arxiv.org/abs/2608.14208" target="_blank" rel="noopener">
+        <b>Zhang, Jiang, Luo (2026)</b> — Foundation Neural Effective Hamiltonian for Strongly Correlated Quantum Materials. <i>arXiv</i> 2608.14208.
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <p>纯静态页面 · 零依赖 · 可直接部署到 <b>GitHub Pages</b>。核心数值（精确对角化 + VMC）见 <code>quantum.js</code>，可在本地用 <code>node tests/smoke.js</code> 验证。</p>
+    <p class="foot-note">本页所有“训练”都在你的浏览器本地完成，不上传任何数据。</p>
+  </div>
+</footer>
+
+<script src="quantum.js"></script>
+<script src="main.js"></script>
+</body>
+</html>
