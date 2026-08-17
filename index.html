@@ -264,6 +264,28 @@
       <h3 id="tlTitle">受限玻尔兹曼机（RBM）</h3>
       <p id="tlText">RBM 是最简单、最经典的 NQS 结构……</p>
       <ul class="ticks" id="tlPros"></ul>
+
+      <details class="compare" id="compareBox">
+        <summary><span class="compare-ico">▸</span><span id="compareTitle">对比：RBM vs 现代结构</span></summary>
+        <div class="compare-body">
+          <div class="table-scroll">
+            <table class="compare-table">
+              <thead>
+                <tr><th>维度</th><th>RBM（2017 年代）</th><th>现代主流结构</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>典型对象</td><td>自旋-1/2 晶格（Ising / Heisenberg / J₁–J₂）</td><td>二维阻挫磁体、费米子、连续空间电子与分子、moiré 材料、开放系统、动力学</td></tr>
+                <tr><td>采样</td><td>MCMC（自相关、临界慢化）</td><td>自回归精确采样（无 MCMC）</td></tr>
+                <tr><td>对称性</td><td>无（靠参数硬学）</td><td>卷积 / 等变 / 反对称内置</td></tr>
+                <tr><td>精度</td><td>定性到 ~1%</td><td>机器精度、化学精度（~1 kcal/mol）</td></tr>
+                <tr><td>参数效率</td><td>低（单层）</td><td>高（深度 + 对称性）</td></tr>
+                <tr><td>一次训练</td><td>只解一个哈密顿量</td><td>基础模型一次覆盖一族哈密顿量</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="hint">RBM 并未被淘汰：它仍是讲解 NQS 思想最清晰、训练最稳的教学与基线结构，也常作为复合 ansatz 的积木。现代结构的三大升级——<b>精确采样</b>（自回归，摆脱 MCMC）、<b>对称性内置</b>（卷积/等变/反对称）、<b>深度与摊销</b>（基础模型覆盖参数族）——才是它真正拉开差距的地方。</p>
+        </div>
+      </details>
     </div>
   </div>
 </section>

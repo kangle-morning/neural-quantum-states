@@ -376,6 +376,56 @@ canvas { display: block; width: 100%; border-radius: 10px; }
 .tl-panel h3 { font-size: 1.3rem; }
 .tl-panel p { color: var(--muted); }
 
+/* ---------------- compare (expandable) card ---------------- */
+.compare {
+  margin-top: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.42);
+  overflow: hidden;
+}
+.compare summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 13px 16px;
+  font-weight: 700;
+  font-size: .95rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  user-select: none;
+  transition: .15s;
+}
+.compare summary::-webkit-details-marker { display: none; }
+.compare summary:hover { background: rgba(148, 163, 184, 0.08); }
+.compare-ico { color: var(--cyan); transition: transform .2s ease; }
+.compare[open] .compare-ico { transform: rotate(90deg); }
+.compare-body { padding: 4px 16px 16px; border-top: 1px solid var(--border); }
+.compare-body .hint { margin-top: 8px; }
+.table-scroll { overflow-x: auto; }
+.compare-table { width: 100%; border-collapse: collapse; font-size: .86rem; margin-top: 10px; }
+.compare-table th, .compare-table td {
+  text-align: left;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.compare-table thead th {
+  color: #fff;
+  font-size: .82rem;
+  letter-spacing: .03em;
+  background: rgba(148, 163, 184, 0.1);
+  white-space: nowrap;
+}
+.compare-table td:first-child, .compare-table th:first-child {
+  color: var(--cyan);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.compare-table td { color: var(--muted); }
+.compare-table tbody tr:last-child td { border-bottom: none; }
+
 /* ---------------- cards ---------------- */
 .grid.cards { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 .card {

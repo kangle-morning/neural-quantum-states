@@ -643,6 +643,8 @@
 
     const items = $$('.tl-item');
     const iconEl = $('#tlIcon'), titleEl = $('#tlTitle'), textEl = $('#tlText'), prosEl = $('#tlPros');
+    const compareBox = $('#compareBox'), compareTitle = $('#compareTitle');
+    const shortName = { deep: '深度前馈 / CNN', ar: '自回归 RNN / MADE', fermion: '费米子 / 分子', transformer: 'Transformer', diffusion: '扩散 / 生成模型' };
 
     function select(id) {
       items.forEach(b => b.classList.toggle('active', b.dataset.id === id));
@@ -651,6 +653,14 @@
       titleEl.textContent = d.title;
       textEl.textContent = d.text;
       prosEl.innerHTML = d.pros.map(p => '<li>' + p + '</li>').join('');
+      // 对比卡只在选中“现代结构”时显示；RBM 是基准，无需和自己对比
+      if (id === 'rbm') {
+        compareBox.style.display = 'none';
+      } else {
+        compareBox.style.display = '';
+        compareTitle.textContent = '对比：' + (shortName[id] || '现代结构') + ' vs RBM';
+      }
+      compareBox.open = false;
     }
     items.forEach(b => b.addEventListener('click', () => select(b.dataset.id)));
     select('rbm');
